@@ -1,7 +1,4 @@
 import tkinter as tk
-import requests as req
-from urllib import parse
-import time
 import json
 import os
 import requests
