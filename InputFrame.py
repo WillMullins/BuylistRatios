@@ -16,16 +16,27 @@ class InputFrame:
         self.foil = tk.IntVar()
         self.storecredit = tk.IntVar()
 
-        cardnamebox = tk.Entry(self.masterframe, textvariable=self.cardname)
-        cardnamebox.grid(row=0, column=0)
-        cardnamebox.focus()
+        self.cardnamebox = tk.Entry(self.masterframe, textvariable=self.cardname)
+        self.cardnamebox.grid(row=0, column=0)
+        self.cardnamebox.focus()
+        self.cardnamebox.bind('<Down>', self.selectcardname)
+        root.bind('<Shift_R>', self.focuscardnamebox)
+
+        self.possiblecards = tk.Listbox(self.masterframe, bg='#d9d9d9')
+        self.possiblecards.bind('<Tab>', self.clickcardname)
+        self.possiblecards.bind('<Double-Button-1>', self.clickcardname)
+        self.possiblecards.bind('<space>', self.focuscardnamebox)
+        for letter in 'abcdefghijklmnopqrstuvwxyz/\'':
+            self.possiblecards.bind(letter, self.focuscardnamebox)
+
+        self.cardname.trace('w',self.getcardnames)
 
         getsets = tk.Button(self.masterframe, text='Get Sets', command=self.getsets)
         getsets.grid(row=0, column=1)
         root.bind('<Return>', self.pressedenter)
 
         yscrollbar = tk.Scrollbar(self.masterframe, orient=tk.VERTICAL)
-        self.setnamebox = tk.Listbox(self.masterframe, selectmode=tk.SINGLE, yscrollcommand=yscrollbar.set)
+        self.setnamebox = tk.Listbox(self.masterframe, yscrollcommand=yscrollbar.set)
         self.setnamebox.grid(row=1, column=0, sticky='nsew', columnspan=3)
         self.setnamebox.config(width=60)
         yscrollbar.grid(row=1, column=2, sticky='nsew')
@@ -36,6 +47,7 @@ class InputFrame:
         self.searchframe.grid(row=2, column=0)
         searchbutton = tk.Button(self.searchframe, text="Get Prices", command=self.search)
         searchbutton.grid(row=0, column=1)
+        root.bind('<Shift_L>',self.pressedleftshift)
 
         foilcheck = tk.Checkbutton(self.searchframe, text="Foil", variable=self.foil)
         foilcheck.grid(row=0, column=0)
@@ -75,13 +87,19 @@ class InputFrame:
 
 
     def getsets(self, name=''):
+        if self.possiblecards.curselection()!=():
+            if self.possiblecards.selection_get():
+                self.cardname.set(self.possiblecards.selection_get())
+            self.possiblecards.place_forget()
+
         if name == '':
             name = self.cardname.get()
+
         self.data = []
         found = False
         for set in self.allcards['data']:
             for card in self.allcards['data'][set]['cards']:
-                if card['name'] == name:
+                if card['name'].lower() == name.lower():
                     card['displayname'] = self.allcards['data'][set]['name']
                     card['tempname'] = self.allcards['data'][set]['name']
                     self.data.append(card)
@@ -106,6 +124,8 @@ class InputFrame:
                 self.setnamebox.insert(tk.END, datum['displayname'])
         # for printing in self.data:
         #     print(printing['displayname'])
+        self.setnamebox.focus()
+        self.setnamebox.select_set(0)
 
     def search(self):
         isfoil = self.foil.get()
@@ -322,6 +342,60 @@ class InputFrame:
             progressbar.close()
         print("Prices Updated Successfully")
 
+    def getcardnames(self,*args):
+        self.possiblecards.place(x=0,y=24,height=150,width=300,anchor='nw')
+        self.possiblecards.lift()
+        self.possiblecards.delete(0,tk.END)
+        entry = self.cardname.get()
+        alreadyfound = False
+
+        if len(entry) > 2:
+            for set in self.allcards['data']:
+                for card in self.allcards['data'][set]['cards']:
+                    if card['name'].lower().startswith(entry.lower()):
+                        alreadyfound = False
+                        for existingentry in self.possiblecards.get(0,tk.END):
+                            if card['name'] == existingentry:
+                                alreadyfound = True
+                        if not alreadyfound:
+                            self.possiblecards.insert(tk.END, card['name'])
+
+        if self.possiblecards.size()==0:
+            self.possiblecards.place_forget()
+            self.possiblecards.delete(0, tk.END)
+
+        if self.possiblecards.size() == 1:
+            # print(self.possiblecards.get(0).lower())
+            if self.possiblecards.get(0).lower()==entry.lower():
+                self.possiblecards.place_forget()
+                self.possiblecards.delete(0, tk.END)
+
+
+    def selectcardname(self,event):
+        self.possiblecards.focus()
+        self.possiblecards.select_set(0)
+
+    def clickcardname(self,event):
+        self.cardname.set(self.possiblecards.selection_get())
+
+    def focuscardnamebox(self,event):
+        self.cardnamebox.focus()
+        if event.keysym == 'Shift_R':
+            self.cardnamebox.select_range(0,tk.END)
+        elif event.keysym == 'space':
+            self.cardname.set(self.cardname.get() + ' ')
+        elif event.keysym == 'apostrophe':
+            self.cardname.set(self.cardname.get() + '\'')
+        else:
+            self.cardname.set(self.cardname.get()+event.keysym)
+        self.cardnamebox.icursor(tk.END)
+        # print(event.keysym)
+
     def pressedenter(self,event):
         self.getsets()
 
+    def pressedleftshift(self,event):
+        if self.setnamebox.curselection() != ():
+            self.search()
+        else:
+            pass
