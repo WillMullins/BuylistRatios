@@ -35,6 +35,10 @@ class InputFrame:
         getsets.grid(row=0, column=1)
         root.bind('<Return>', self.pressedenter)
 
+        self.usecolnums = tk.IntVar()
+        usecollectornumscheck = tk.Checkbutton(self.masterframe, text='Include Collector Numbers', variable=self.usecolnums)
+        usecollectornumscheck.grid(row=0, column=2)
+
         yscrollbar = tk.Scrollbar(self.masterframe, orient=tk.VERTICAL)
         self.setnamebox = tk.Listbox(self.masterframe, yscrollcommand=yscrollbar.set)
         self.setnamebox.grid(row=1, column=0, sticky='nsew', columnspan=3)
@@ -100,30 +104,38 @@ class InputFrame:
         for set in self.allcards['data']:
             for card in self.allcards['data'][set]['cards']:
                 if card['name'].lower() == name.lower():
-                    card['displayname'] = self.allcards['data'][set]['name']
-                    card['tempname'] = self.allcards['data'][set]['name']
-                    self.data.append(card)
-                    found=True
-                    # print(card['uuid'] + ' - ' + allcards['data'][set]['name'])
+                    if card.__contains__('side'):
+                        if card['side']=='b':
+                            continue
+                    if 'paper' in card['availability']:
+                        card['displayname'] = self.allcards['data'][set]['name']
+                        card['tempname'] = self.allcards['data'][set]['name']
+                        self.data.append(card)
+                        found=True
+                        # print(card['uuid'] + ' - ' + allcards['data'][set]['name'])
 
         if not found:
             print("Could Not find Card: " + name)
 
+
         self.checklang()
         self.checkpromo()
         self.checkfullartborderless()
+        self.checkfinishes()
         self.checkframeeffects()
         self.checkartists()
         self.checkbbfoil()
         self.checkartistandpromo()
         self.checkcollectornum()
 
+
+        if self.usecolnums.get():
+            for datum in self.data:
+                datum['displayname'] = datum['displayname'] + ' - ' + datum['number']
+
         self.setnamebox.delete(0,tk.END)
         for datum in self.data:
-            if 'paper' in datum['availability']:
-                self.setnamebox.insert(tk.END, datum['displayname'])
-        # for printing in self.data:
-        #     print(printing['displayname'])
+            self.setnamebox.insert(tk.END, datum['displayname'])
         self.setnamebox.focus()
         self.setnamebox.select_set(0)
 
@@ -136,7 +148,7 @@ class InputFrame:
                 if c['displayname'] == self.setnamebox.get(i):
                     card = c
         uuid = card['uuid']
-
+        print(uuid)
         ckprice = 0
         tcgprice = 0
 
@@ -177,7 +189,7 @@ class InputFrame:
                         tcgprice = self.allprices['data'][uuid]['paper'][vendor]['retail']['foil'][tcgdate]
                         isfoil = 1
 
-        self.history.addcard(card['displayname'], isfoil, ckprice, tcgprice,self.storecredit.get())
+        self.history.addcard(card['name'], card['displayname'], isfoil, ckprice, tcgprice,self.storecredit.get())
 
 
     def checklang(self):
@@ -193,11 +205,9 @@ class InputFrame:
     def checkpromo(self):
         for datum in self.data:
             if self.isnotunique(datum):
-                if 'isPromo' in datum:
-                    if datum['isPromo']:
-                        if 'promoTypes' in datum:
-                            if datum['promoTypes'][0] != 'boosterfun' and datum['promoTypes'][0] != 'concept':
-                                datum['tempname'] = datum['displayname'] + ' - ' + datum['promoTypes'][0]
+                if 'promoTypes' in datum:
+                    if datum['promoTypes'][0] != 'boosterfun' and datum['promoTypes'][0] != 'concept':
+                        datum['tempname'] = datum['displayname'] + ' - ' + datum['promoTypes'][0]
         self.reverttempnames()
         self.setdisplaynames()
 
@@ -210,6 +220,17 @@ class InputFrame:
                             datum['tempname'] = datum['displayname'] + ' - ' + 'Full Art'
                     elif datum['borderColor'] == 'borderless':
                         datum['tempname'] = datum['displayname'] + ' - ' + 'Borderless'
+        self.reverttempnames()
+        self.setdisplaynames()
+
+    def checkfinishes(self):
+        for datum in self.data:
+            if self.isnotunique(datum):
+                for fin in datum['finishes']:
+                    if fin != 'foil' and fin != 'nonfoil':
+                        datum['tempname'] = datum['displayname'] + ' - ' + fin
+                        break
+
         self.reverttempnames()
         self.setdisplaynames()
 
@@ -308,11 +329,11 @@ class InputFrame:
         lnum = [0, 0, 0]
         ldate = ''
         for date in self.allprices['data'][uuid]['paper'][vendor][type][treatment]:
+
             d = [int(num) for num in date.split('-')]
             if d[0]>=lnum[0] and d[1]>=lnum[1] and d[2]>lnum[2]:
                 ldate = date
-
-        print(ldate)
+        print(vendor + ": " + ldate)
         return ldate
 
     def updateprintings(self):
@@ -326,6 +347,9 @@ class InputFrame:
                 progressbar.update(len(data))
                 file.write(data)
             progressbar.close()
+        basepath = os.getcwd()
+        self.file = open(basepath + r'\AllPrintings.json', encoding='utf8')
+        self.allcards = json.load(self.file)
         print("Printings Updated Successfully")
 
     def updateprices(self):
@@ -340,6 +364,9 @@ class InputFrame:
                 progressbar.update(len(data))
                 file.write(data)
             progressbar.close()
+        basepath = os.getcwd()
+        self.prices = open(basepath + r'\AllPrices.json', encoding='utf8')
+        self.allprices = json.load(self.prices)
         print("Prices Updated Successfully")
 
     def getcardnames(self,*args):
