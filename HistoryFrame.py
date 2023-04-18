@@ -6,7 +6,7 @@ class HistoryFrame:
         self.masterframe.grid(row=0, column=1, sticky='nsew')
 
         yscrollbar = tk.Scrollbar(self.masterframe, orient=tk.VERTICAL)
-        self.listbox = tk.Listbox(self.masterframe, selectmode=tk.SINGLE, yscrollcommand=yscrollbar.set)
+        self.listbox = tk.Listbox(self.masterframe, yscrollcommand=yscrollbar.set)
         self.listbox.grid(row=0, column=0, sticky='nsew')
         self.listbox.config(width=70)
         yscrollbar.grid(row=0, column=1, sticky='nsew')
@@ -16,7 +16,7 @@ class HistoryFrame:
         tk.Grid.columnconfigure(self.masterframe, 1, weight=0)
         tk.Grid.rowconfigure(self.masterframe, 0, weight=1)
 
-    def addcard(self, displayname, f, ckprice, tcgprice, sc):
+    def addcard(self, cardname, displayname, f, ckprice, tcgprice, sc):
         foil=''
         storecredit = ''
         if f:
@@ -30,7 +30,7 @@ class HistoryFrame:
                 ratio = str(round((ckprice)/tcgprice * 100, 2)) + '%'
         else:
             ratio = 'N/A'
-        entry = displayname + foil + ": CK: " + str(ckprice) + ', TCG: ' + str(tcgprice) + ', Ratio: ' + ratio + storecredit
+        entry = cardname + ': ' + displayname + foil + ": CK: " + str(ckprice) + ', TCG: ' + str(tcgprice) + ', Ratio: ' + ratio + storecredit
         self.listbox.insert(0, entry)
 
     def get_masterframe(self):
